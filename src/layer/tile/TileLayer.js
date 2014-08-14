@@ -40,6 +40,11 @@ L.TileLayer = L.GridLayer.extend({
 		if (typeof options.subdomains === 'string') {
 			options.subdomains = options.subdomains.split('');
 		}
+
+		// for https://github.com/Leaflet/Leaflet/issues/137
+		if (!L.Browser.android) {
+			this.on('tileunload', this._onTileRemove);
+		}
 	},
 
 	setUrl: function (url, noRedraw) {
@@ -102,26 +107,19 @@ L.TileLayer = L.GridLayer.extend({
 
 		// increase tile size when overscaling
 		return zoomN && zoom > zoomN ?
-				Math.round(map.getZoomScale(zoom) / map.getZoomScale(zoomN) * options.tileSize) :
+				Math.round(map.getZoomScale(zoomN, zoom) * options.tileSize) :
 				options.tileSize;
 	},
 
-	_removeTile: function (key) {
-		var tile = this._tiles[key];
-
-		L.GridLayer.prototype._removeTile.call(this, key);
-
-		// for https://github.com/Leaflet/Leaflet/issues/137
-		if (!L.Browser.android) {
-			tile.onload = null;
-			tile.src = L.Util.emptyImageUrl;
-		}
+	_onTileRemove: function (e) {
+		e.tile.onload = null;
+		e.tile.src = L.Util.emptyImageUrl;
 	},
 
 	_getZoomForUrl: function () {
 
 		var options = this.options,
-		    zoom = this._map.getZoom();
+		    zoom = this._tileZoom;
 
 		if (options.zoomReverse) {
 			zoom = options.maxZoom - zoom;
